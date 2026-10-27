@@ -38,7 +38,7 @@ Mở VS Code → Run and Debug → chọn **"Cả 3 service"** (file `.vscode/la
 
 Nếu PgBouncer báo lỗi xác thực, tạm đổi `DB_WRITE_URL`/`DB_READ_URL` trỏ thẳng `postgres:5432`; code không phải sửa.
 
-## 3. Thử nhanh bằng curl
+## 3. Thử nghiệm nhanh bằng cURL
 ```bash
 # 1) đăng nhập analyst
 TOKEN=$(curl -s localhost:8080/api/v1/auth/login -H 'content-type: application/json' \
@@ -54,7 +54,7 @@ curl -s -X POST localhost:8080/api/v1/cases/1/actions -H "Authorization: Bearer 
 Tài khoản demo (trong `analyst_api/auth.py`): `analyst1/analyst123`, `lead1/lead123`, `admin/admin123`.
 Tài liệu API tự sinh: `http://localhost:8000/docs` (chỉ khi mở cổng bằng file dev).
 
-## 4. Hợp đồng giao tiếp
+## 4. Hợp đồng giao tiếp (Communication Contracts)
 
 ### REST (qua Nginx, tiền tố `/api/v1`)
 | Method & đường dẫn | Ai gọi | Quyền | Ghi chú |
