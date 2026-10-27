@@ -1,0 +1,16 @@
+# Dùng khi muốn chạy/debug service Python trực tiếp trong VS Code:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d redis postgres pgbouncer-write pgbouncer-read
+# Lưu ý: file này mở thêm cổng ra máy host, chỉ dùng khi phát triển.
+services:
+  redis:
+    ports: ["6379:6379"]
+  postgres:
+    ports: ["5432:5432"]
+  pgbouncer-write:
+    ports: ["6432:5432"]
+  pgbouncer-read:
+    ports: ["6433:5432"]
+  analyst-api:
+    ports: ["8000:8000"]
+  prometheus:
+    ports: ["9090:9090"]

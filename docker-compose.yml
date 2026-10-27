@@ -1,0 +1,136 @@
+name: fraud-copilot
+
+x-app-env: &app-env
+  REDIS_URL: redis://redis:6379/0
+  DB_WRITE_URL: postgresql://${POSTGRES_USER:-fraud}:${POSTGRES_PASSWORD:-fraud}@pgbouncer-write:5432/${POSTGRES_DB:-fraud}
+  DB_READ_URL: postgresql://${POSTGRES_USER:-fraud}:${POSTGRES_PASSWORD:-fraud}@pgbouncer-read:5432/${POSTGRES_DB:-fraud}
+  JWT_SECRET: ${JWT_SECRET:-dev-only-change-me}
+  SIMULATOR_API_KEY: ${SIMULATOR_API_KEY:-dev-sim-key}
+  PII_SALT: ${PII_SALT:-dev-salt}
+  LLM_STUB_LATENCY_S: ${LLM_STUB_LATENCY_S:-1.0}
+  LLM_STUB_FAIL_RATE: ${LLM_STUB_FAIL_RATE:-0.0}
+
+x-python-service: &python-service
+  build:
+    context: .
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+    pgbouncer-write:
+      condition: service_started
+    pgbouncer-read:
+      condition: service_started
+
+services:
+  # ---- Ingress: cổng duy nhất mở ra ngoài máy ----
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - analyst-api
+    restart: unless-stopped
+
+  # ---- 3 tiến trình độc lập ----
+  analyst-api:
+    <<: *python-service
+    command: uvicorn analyst_api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      <<: *app-env
+      SERVICE_NAME: analyst-api
+
+  scoring-worker:
+    <<: *python-service
+    command: python -m scoring_worker.main
+    environment:
+      <<: *app-env
+      SERVICE_NAME: scoring-worker
+      METRICS_PORT: "9101"
+
+  llm-worker:
+    <<: *python-service
+    command: python -m llm_worker.main
+    environment:
+      <<: *app-env
+      SERVICE_NAME: llm-worker
+      METRICS_PORT: "9102"
+
+  # ---- Simulator: chỉ chạy khi gọi rõ ràng (--profile sim) ----
+  simulator:
+    build:
+      context: .
+    profiles: ["sim"]
+    command: python -m simulator.replay --url http://nginx --tps 10 --limit 500
+    environment:
+      SIMULATOR_API_KEY: ${SIMULATOR_API_KEY:-dev-sim-key}
+    volumes:
+      - ./data:/data
+    depends_on:
+      - nginx
+
+  # ---- Hạ tầng dùng chung ----
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fraud}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fraud}
+      POSTGRES_DB: ${POSTGRES_DB:-fraud}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fraud} -d ${POSTGRES_DB:-fraud}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # PgBouncer ghi -> Primary
+  pgbouncer-write: &pgbouncer
+    image: edoburu/pgbouncer:latest
+    environment: &pgb-env
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-fraud}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-fraud}
+      DB_NAME: ${POSTGRES_DB:-fraud}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "500"
+      DEFAULT_POOL_SIZE: "20"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # PgBouncer đọc -> Replica. Demo dùng chung 1 Postgres;
+  # khi có replica thật chỉ cần đổi DB_HOST sang replica.
+  pgbouncer-read:
+    <<: *pgbouncer
+    environment:
+      <<: *pgb-env
+      DB_HOST: postgres
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+
+volumes:
+  pgdata:

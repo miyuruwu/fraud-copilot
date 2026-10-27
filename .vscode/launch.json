@@ -1,0 +1,61 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Analyst API (local)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["analyst_api.main:app", "--reload", "--port", "8000"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SERVICE_NAME": "analyst-api",
+        "REDIS_URL": "redis://localhost:6379/0",
+        "DB_WRITE_URL": "postgresql://fraud:fraud@localhost:6432/fraud",
+        "DB_READ_URL": "postgresql://fraud:fraud@localhost:6433/fraud"
+      }
+    },
+    {
+      "name": "Scoring Worker (local)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scoring_worker.main",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SERVICE_NAME": "scoring-worker",
+        "METRICS_PORT": "9101",
+        "REDIS_URL": "redis://localhost:6379/0",
+        "DB_WRITE_URL": "postgresql://fraud:fraud@localhost:6432/fraud",
+        "DB_READ_URL": "postgresql://fraud:fraud@localhost:6433/fraud"
+      }
+    },
+    {
+      "name": "LLM Worker (local)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "llm_worker.main",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SERVICE_NAME": "llm-worker",
+        "METRICS_PORT": "9102",
+        "REDIS_URL": "redis://localhost:6379/0",
+        "DB_WRITE_URL": "postgresql://fraud:fraud@localhost:6432/fraud",
+        "DB_READ_URL": "postgresql://fraud:fraud@localhost:6433/fraud"
+      }
+    },
+    {
+      "name": "Simulator (local, qua API trực tiếp)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "simulator.replay",
+      "args": ["--url", "http://localhost:8000", "--tps", "5", "--limit", "100"],
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Cả 3 service",
+      "configurations": ["Analyst API (local)", "Scoring Worker (local)", "LLM Worker (local)"]
+    }
+  ]
+}
