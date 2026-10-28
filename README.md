@@ -29,15 +29,7 @@ curl http://localhost:8080/healthz
 ```
 
 **Cách B – chạy/debug Python trong VS Code** (hạ tầng trong Docker, code chạy trên máy):
-```bash
-python -m venv .venv && .venv\Scripts\activate      # Windows (macOS/Linux: source .venv/bin/activate)
-pip install -r requirements-dev.txt                  # cần Python >= 3.11
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d redis postgres pgbouncer-write pgbouncer-read
-```
-Mở VS Code → Run and Debug → chọn **"Cả 3 service"** (file `.vscode/launch.json`). Gửi dữ liệu: `python -m simulator.replay --url http://localhost:8000 --tps 5 --limit 100`.
-
-Nếu PgBouncer báo lỗi xác thực, tạm đổi `DB_WRITE_URL`/`DB_READ_URL` trỏ thẳng `postgres:5432`; code không phải sửa.
-
+Chạy file tasks.json trong phần .vscode
 ## 3. Thử nhanh bằng curl
 ```bash
 # 1) đăng nhập analyst
