@@ -89,7 +89,7 @@ Mỗi queue gồm `:ready` (ZSET), `:processing` (HASH, có deadline) và `:dead
 | llm-worker | `case_briefs` (cập nhật kết quả) |
 | cả ba | `audit_log` (chỉ INSERT) |
 
-## 5. Những chỗ cần thay bằng code thật
+## 5. Những phần cần thay thế
 | File | Hiện tại | Thay bằng |
 |---|---|---|
 | `scoring_worker/pipeline/inference.py` | xác suất giả theo công thức | nạp model + calibrator từ Model Store |
@@ -101,9 +101,4 @@ Mỗi queue gồm `:ready` (ZSET), `:processing` (HASH, có deadline) và `:dead
 
 Để thử các đường lỗi: `LLM_STUB_FAIL_RATE=0.5` (circuit breaker, FAILED_TIMEOUT) · `--fault-rate 0.1` ở simulator (MANUAL_FALLBACK_UNSCORED) · tăng `--tps` để thấy 429 backpressure.
 
-## 6. Hạn chế đã biết
-- Khung này chưa được chạy thử trên Docker trong môi trường soạn (không có mạng); mới kiểm tra cú pháp. Nếu có lỗi khi `up`, xem `docker compose logs <service>`.
-- Chưa có Replica PostgreSQL thật: cả hai PgBouncer cùng trỏ một Postgres.
-- Sau khi commit case mà Redis lỗi trước lúc phát `case_created` thì case chưa có brief (cần outbox pattern); tạm thời analyst dùng `brief:regenerate`.
-- Chưa có Grafana, Alert Service, Slack (Prometheus đã thu metrics), và chưa có UI.
-- Nginx OSS không tự kiểm tra JWT, nên xác thực nằm ở Analyst API; Nginx lo rate limit và định tuyến.
+
